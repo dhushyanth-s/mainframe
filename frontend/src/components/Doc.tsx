@@ -14,6 +14,7 @@ import { useConvexY } from "@/hooks/use-convexy";
 import { myPlugin } from "@/app/utils/test-plugin";
 import { useDocument } from "@/hooks/useDocument";
 import { Id } from "../../convex/_generated/dataModel";
+import { usePathname, useSearchParams } from "next/navigation";
 
 export const MilkdownEditor = ({ documentId }: { documentId: string }) => {
   const { loading, get } = useEditor((root) =>
@@ -27,7 +28,7 @@ export const MilkdownEditor = ({ documentId }: { documentId: string }) => {
       .use(myPlugin)
   );
   // const { awareness } = useConvexY(doc, "room");
-  const { session, awareness, createOrJoinSession, doc } =
+  const { session, awareness, createOrJoinSession, doc, onExitUser } =
     useDocument(documentId);
 
   useEffect(() => {
@@ -44,12 +45,12 @@ export const MilkdownEditor = ({ documentId }: { documentId: string }) => {
             .setOptions({
               yCursorOpts: {
                 cursorBuilder: (args) => {
-                  console.log(args)
-                  const element = document.createElement("span")
-                  element.id = "remote-cursor"
-                  return element
-                }
-              }
+                  const element = document.createElement("span");
+                  element.dataset["name"] = args.name;
+                  element.id = "remote-cursor";
+                  return element;
+                },
+              },
             })
             // connect yjs with milkdown
             .connect();
@@ -60,15 +61,28 @@ export const MilkdownEditor = ({ documentId }: { documentId: string }) => {
 
   useEffect(() => {
     createOrJoinSession({ docId: documentId as Id<"documents"> });
-    window.onbeforeunload = function(event) {
-    // do stuff here
-    return "you have unsaved changes. Are you sure you want to navigate away?";
-};
   }, []);
+
+  const pathname = usePathname()
+  const searchParams = useSearchParams()
+  const [init, setInit] = React.useState(false)
+  useEffect(() => {
+    console.log("path changed", pathname, searchParams, init)
+    if (!init) {
+      setInit(true)
+    } else {
+      console.log(awareness?.states,"navigated")
+      onExitUser()
+    }
+  }, [pathname, searchParams])
 
   return <Milkdown />;
 };
 
 export function MilkdownEditorWrapper(props: PropsWithChildren) {
-  return <MilkdownProvider><div className="m-10 border rounded-md p-5">{props.children}</div></MilkdownProvider>;
+  return (
+    <MilkdownProvider>
+      <div className="m-10 border rounded-md p-5">{props.children}</div>
+    </MilkdownProvider>
+  );
 }

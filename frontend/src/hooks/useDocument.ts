@@ -37,7 +37,7 @@ export function useDocument(docId: string) {
   const [doc, _] = useState(new Y.Doc());
 
   const awareness = useMemo(() => {
-    if (shadow) {
+    if (shadow && user.isLoaded) {
       const awarenessTemp = new AwarenessProtocol.Awareness(shadow);
 
       awarenessTemp.setLocalStateField("user", {
@@ -47,7 +47,7 @@ export function useDocument(docId: string) {
 
       return awarenessTemp;
     }
-  }, [shadow]);
+  }, [shadow, user]);
 
   // Document state has changed remotely
   useEffect(() => {
@@ -130,5 +130,18 @@ export function useDocument(docId: string) {
     return () => doc.off("update", updateDocThrottled);
   }, [session?._id, shadow, awareness]);
 
-  return { session, awareness, doc, createOrJoinSession };
+  const onExitUser = useDebouncedCallback(() => {
+    if (awareness && session) {
+      AwarenessProtocol.removeAwarenessStates(awareness, [awareness.clientID], user.user?.id);
+      
+    }
+  }, DEBOUNCE_DELAY);
+
+  return {
+    session,
+    awareness,
+    doc,
+    createOrJoinSession,
+    onExitUser
+  };
 }
